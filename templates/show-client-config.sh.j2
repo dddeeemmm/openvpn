@@ -1,0 +1,60 @@
+#!/bin/bash
+# Ansible Managed
+
+echo "
+client
+dev tun
+persist-key
+persist-tun
+remote-cert-tls server
+key-direction 1
+cipher {{ openvpn_server_cipher }}
+auth SHA512
+proto {{ openvpn_server_proto }}
+reneg-sec 0
+"
+
+{% if openvpn_server_compression %}
+echo "comp-lzo"
+{% endif %}
+
+{% if openvpn_server_routes is not defined or openvpn_server_routes == '' %}
+echo "redirect-gateway def1"
+{% endif %}
+
+echo "auth-user-pass
+"
+
+{% if openvpn_server_dns_servers is defined and openvpn_server_dns_servers != '' %}
+echo "
+# Un-comment these lines in Ubuntu (and other Linux distros)
+# in order to set the DNS server:
+#
+#script-security 2
+#up /etc/openvpn/update-resolv-conf
+#down /etc/openvpn/update-resolv-conf"
+{% endif %}
+{% if openvpn_server_register_dns %}
+echo "
+# Windows: this can force some windows clients to load the DNS configuration
+#
+#register-dns
+"
+{% endif %}
+
+echo "
+# Set log file verbosity
+verb {{ openvpn_server_verbosity }}
+<connection>
+remote {{ openvpn_server_cn }} {{ openvpn_server_port }} {{ openvpn_server_proto }}
+float
+nobind
+</connection>
+<ca>
+$(cat {{ openvpn_pki_dir }}/ca.crt)
+</ca>
+<tls-auth>
+$(cat {{ openvpn_pki_dir }}/ta.key)
+</tls-auth>
+key-direction 1
+"

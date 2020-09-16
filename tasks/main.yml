@@ -1,0 +1,6 @@
+---
+
+- include: asserts.yml
+- include: install.yml
+  when: openvpn_install
+- include: config.yml

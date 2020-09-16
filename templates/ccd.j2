@@ -1,0 +1,1 @@
+ifconfig-push {{ openvpn_server_network.strip().split()[0].split('.')[0:3] | join('.') }}.{{ item.ip }} {{ openvpn_server_network.strip().split()[1]}}

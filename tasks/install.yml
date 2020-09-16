@@ -1,0 +1,9 @@
+---
+
+- name: install epel-release
+  package:
+    name: epel-release
+
+- name: install
+  package:
+    name: '{{ openvpn_packages }}'

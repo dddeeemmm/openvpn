@@ -1,0 +1,23 @@
+# Ansible Managed
+[Unit]
+Description=OpenVPN Server
+After=network.target
+
+[Service]
+Type=idle
+{% if openvpn_nat | bool %}
+ExecStartPre=/sbin/iptables -t nat -A POSTROUTING -s {{ openvpn_iptables_cidr }} -o eth0 -j MASQUERADE
+{% endif %}
+ExecStartPre=/bin/echo 1 > /proc/sys/net/ipv4/ip_forward
+ExecStart=/usr/sbin/openvpn --config /etc/openvpn/server/config
+ExecStopPost=/bin/echo 0 > /proc/sys/net/ipv4/ip_forward
+ExecReload=/bin/kill -HUP $MAINPID
+WorkingDirectory=/etc/openvpn
+
+TimeoutStartSec=600
+TimeoutStopSec=600
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+# Ansible Managed
+
+uid nslcd
+gid ldap
+
+uri {{ openvpn_ldap_uri }}
+
+base {{ openvpn_ldap_base_dn }}
+scope sub
+
+ldap_version 3
+
+tls_cacertfile /etc/pki/tls/certs/ca-bundle.crt
+filter passwd {{ openvpn_ldap_filter }}
+map passwd uid uid
+binddn {{ openvpn_ldap_bind_user_dn }}
+bindpw {{ openvpn_ldap_bind_user_pass }}

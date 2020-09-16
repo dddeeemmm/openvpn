@@ -1,0 +1,179 @@
+---
+
+- name: check cert exist on master
+  stat:
+    path: '{{ openvpn_pki_dir }}/issued/{{ openvpn_server_cn }}.crt'
+  register: check_cert_exist_master
+  when: inventory_hostname == openvpn_master_name
+
+- name: check cert exist on cluster
+  stat:
+    path: '{{ openvpn_pki_dir }}/issued/{{ openvpn_server_cn }}.crt'
+  register: check_cert_exist_cluster
+  when: inventory_hostname != openvpn_master_name
+
+
+- block:
+
+    - block:
+
+        - name: make dirs
+          file:
+            path: '{{ openvpn_easyrsa_dir }}'
+            state: directory
+
+        - name: make easy-rsa vars
+          template:
+            src: easyrsa-vars.j2
+            dest: '{{ openvpn_easyrsa_dir }}/vars'
+
+        - name: initialize easy-rsa
+          command: '{{ item }}'
+          args:
+            chdir: '{{ openvpn_easyrsa_dir }}'
+          with_items:
+            - '{{ openvpn_easycmd }} init-pki'
+            - '{{ openvpn_easycmd }} build-ca nopass'
+            - '{{ openvpn_easycmd }} gen-dh'
+            - 'openvpn --genkey --secret {{ openvpn_pki_dir }}/ta.key'
+            - '{{ openvpn_easycmd }} build-server-full {{ openvpn_server_cn }} nopass'
+        #    - '{{ openvpn_easycmd }} build-client-full client nopass'
+
+      when: not check_cert_exist_master.stat.exists or openvpn_generate_certs | bool
+
+    - name: get certs from primary node
+      run_once: yes
+      fetch:
+        src: '{{ item }}'
+        dest: /tmp/openvpn{{ item }}
+        flat: yes
+      with_items: '{{ openvpn_server_certs }}'
+      when: check_cert_exist_cluster is defined
+
+  when: inventory_hostname == openvpn_master_name
+
+
+- block:
+
+    - name: make dirs
+      file:
+        path: '{{ item }}'
+        state: directory
+      with_items:
+        - '{{ openvpn_pki_dir }}'
+        - '{{ openvpn_pki_dir }}/issued'
+        - '{{ openvpn_pki_dir }}/private'
+
+    - name: copy certs to cluster
+      copy:
+        src: /tmp/openvpn/{{ item }}
+        dest: '{{ item }}'
+      with_items: '{{ openvpn_server_certs }}'
+
+  when:
+   - inventory_hostname != openvpn_master_name
+   - check_cert_exist_cluster is defined
+   - not check_cert_exist_cluster.stat.exists or openvpn_share_certs | bool
+
+
+- name: make work dirs
+  file:
+    path: '{{ item }}'
+    state: directory
+    owner: openvpn
+  loop:
+    - '{{ openvpn_server_logfile | dirname }}'
+    - '{{ openvpn_client_config_dir }}'
+
+- name: get users for ccd
+  include_vars: openvpn_users.yml
+
+- name: make client configs
+  template:
+    src: ccd.j2
+    dest: '{{ openvpn_client_config_dir }}/{{ item.name }}'
+  with_items: '{{ openvpn_users }}'
+
+
+- name: make ldap config
+  template:
+    src: nslcd.conf.j2
+    dest: /etc/nslcd.conf
+  no_log: true
+  register: make_ldap_config
+
+- name: config ldap
+  copy:
+    src: openvpn
+    dest: /etc/pam.d/openvpn
+  register: config_ldap
+
+- name: make server config
+  template:
+    src: server.j2
+    dest: /etc/openvpn/server/config
+  register: make_server_config
+
+- name: allow ip forwarding
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: 1
+    state: present
+    reload: yes
+
+# iptables -t nat -A POSTROUTING -s {{ openvpn_iptables_cidr }} -o eth0 -j MASQUERADE
+- name: set iptables nat rules
+  iptables:
+    table: nat
+    chain: POSTROUTING
+    out_interface: eth0
+    jump: MASQUERADE
+    source: '{{ openvpn_iptables_cidr }}'
+  when: openvpn_type == 'nat'
+
+- name: make openvpn service
+  template:
+    src: openvpn-server.service.j2
+    dest: /etc/systemd/system/openvpn-server.service
+  register: make_openvpn_service
+
+- name: daemon-reload
+  service:
+    daemon_reload: yes
+  when: make_openvpn_service is changed
+
+- name: enable and restart services
+  service:
+    name: '{{ item }}'
+    enabled: yes
+    state: restarted
+  with_items: '{{ openvpn_services }}'
+  when: make_server_config is changed or make_ldap_config is changed or config_ldap is changed
+
+
+- block:
+
+    - name: make client config script
+      template:
+        src: show-client-config.sh.j2
+        dest: '{{ openvpn_base_dir }}/show-client-config.sh'
+
+    - block:
+
+        - name: make client config on '{{ openvpn_master_name }}'
+          shell: 'bash {{ openvpn_base_dir }}/show-client-config.sh > /etc/openvpn/client/config'
+
+        - name: get client config from '{{ openvpn_master_name }}'
+          fetch:
+            src: /etc/openvpn/client/config
+            dest: /tmp/openvpn/client.conf
+            flat: yes
+
+        - debug:
+            msg: Client config stored in /tmp/openvpn/client.conf
+
+      run_once: true
+      when: inventory_hostname == openvpn_master_name
+
+
+  tags: openvpn_client_config

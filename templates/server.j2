@@ -1,0 +1,59 @@
+# Ansible Managed
+
+port {{ openvpn_server_port }}
+proto {{ openvpn_server_proto }}
+dev tun
+dev-type tun
+comp-lzo
+keepalive 10 60
+
+mode server
+tls-server
+client-config-dir {{ openvpn_client_config_dir }}
+
+{% if openvpn_nat %}
+server {{ openvpn_server_network }}
+{% endif %}
+{% if not openvpn_nat %}
+ifconfig {{ openvpn_server_network }}
+topology subnet
+{% endif %}
+
+push "route-gateway {{ openvpn_server_network.strip().split()[0].split('.')[0:3] | join('.') }}.1"
+{% for dns in openvpn_server_dns_servers %}
+push "dhcp-option DNS {{ dns }}"
+{% endfor %}
+push "dhcp-option DOMAIN {{ openvpn_server_domain }}"
+{% for route in openvpn_server_routes %}
+push "route {{ route }}"
+{% endfor %}
+
+ca {{ openvpn_server_ca }}
+cert {{ openvpn_server_crt }}
+key {{ openvpn_server_key }}
+dh {{ openvpn_server_dh }}
+
+# As we're using LDAP, each client can use the same certificate
+duplicate-cn
+
+tls-auth {{ openvpn_server_ta }} 0
+tls-cipher {{ openvpn_server_tls_cipher }}
+auth SHA512
+cipher {{ openvpn_server_cipher }}
+
+user nobody
+group nobody
+
+persist-key
+persist-tun
+
+status {{ openvpn_server_logfile }}
+log-append /proc/1/fd/1
+verb {{ openvpn_server_verbosity }}
+
+# Do not force renegotiation of client
+reneg-sec 0
+
+plugin /usr/lib64/openvpn/plugins/openvpn-plugin-auth-pam.so openvpn
+verify-client-cert optional
+username-as-common-name

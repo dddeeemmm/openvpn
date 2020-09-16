@@ -1,0 +1,29 @@
+---
+
+openvpn_master_name: '{{ ansible_play_batch | first }}'
+
+openvpn_nat: false
+openvpn_install: true
+openvpn_share_certs: false
+openvpn_generate_certs: false
+
+openvpn_server_cn: vpn.domain.org
+openvpn_server_network: 10.50.50.0 255.255.255.0
+openvpn_server_port: 1194
+openvpn_server_proto: udp
+openvpn_server_register_dns: true
+openvpn_server_dns_servers: []
+openvpn_server_domain: domain.org
+openvpn_server_routes: []
+openvpn_server_tls_cipher: TLS-DHE-RSA-WITH-AES-256-CBC-SHA:TLS-DHE-RSA-WITH-AES-256-CBC-SHA256:TLS-DHE-RSA-WITH-AES-256-CBC-SHA256:TLS-DHE-RSA-WITH-CAMELLIA-256-CBC-SHA:TLS-DHE-RSA-WITH-AES-128-CBC-SHA
+openvpn_server_cipher: AES-256-CBC
+openvpn_server_compression: true
+openvpn_server_verbosity: 5
+
+openvpn_ldap_uri: ldap://ipa-1.domain.org
+openvpn_ldap_base_dn: dc=domain,dc=org
+openvpn_ldap_filter: (memberOf=cn=openvpn,cn=groups,cn=accounts,dc=domain,dc=org)
+openvpn_ldap_bind_user_dn: uid=sys.openvpn,cn=users,cn=accounts,dc=domain,dc=org
+openvpn_ldap_bind_user_pass: password
+
+openvpn_iptables_cidr: "{{ openvpn_server_network.strip().split()[0].split('.')[0:4] | join('.') }}/24"

@@ -1,0 +1,22 @@
+# Ansible Managed
+set_var EASYRSA                 "{{ openvpn_easyrsa_dir }}"
+set_var EASYRSA_SSL_CONF        "{{ openvpn_easyrsa_base_dir }}/openssl-easyrsa.cnf"
+set_var EASYRSA_OPENSSL         "openssl"
+set_var EASYRSA_PKI             "{{ openvpn_pki_dir }}"
+set_var EASYRSA_EXT_DIR         "{{ openvpn_easyrsa_base_dir }}/x509-types"
+
+set_var EASYRSA_BATCH           "true"
+set_var EASYRSA_REQ_CN          "{{ openvpn_server_cn }}"
+
+set_var EASYRSA_REQ_COUNTRY     "RU"
+set_var EASYRSA_REQ_PROVINCE    "Moscow"
+set_var EASYRSA_REQ_CITY        "Moscow"
+set_var EASYRSA_REQ_ORG         "OpenVPN"
+set_var EASYRSA_REQ_EMAIL       "vpn@openvpn.ru"
+set_var EASYRSA_REQ_OU          "OpenVPN"
+set_var EASYRSA_KEY_SIZE        "2048"
+
+set_var EASYRSA_CA_EXPIRE       3650
+set_var EASYRSA_CERT_EXPIRE     3650
+
+set_var EASYRSA_CRL_DAYS        180

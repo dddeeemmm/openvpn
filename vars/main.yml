@@ -1,0 +1,30 @@
+---
+
+openvpn_packages:
+  - openvpn
+  - nss-pam-ldapd
+  - easy-rsa
+  - bridge-utils
+openvpn_services:
+  - openvpn-server
+  - nslcd
+
+openvpn_base_dir: /etc/openvpn
+openvpn_client_config_dir: {{ openvpn_base_dir }}/ccd
+openvpn_pki_dir: {{ openvpn_base_dir }}/pki
+openvpn_easyrsa_dir: {{ openvpn_base_dir }}/easy-rsa
+openvpn_easyrsa_base_dir: /usr/share/easy-rsa/3.0.7
+openvpn_easycmd: bash /usr/share/easy-rsa/3.0.7/easyrsa --vars={{ openvpn_easyrsa_dir }}/vars
+
+openvpn_server_logfile: /var/log/openvpn/openvpn-status.log
+openvpn_server_ca: /etc/openvpn/pki/ca.crt
+openvpn_server_crt: /etc/openvpn/pki/issued/{{ openvpn_server_cn }}.crt
+openvpn_server_key: /etc/openvpn/pki/private/{{ openvpn_server_cn }}.key
+openvpn_server_dh: /etc/openvpn/pki/dh.pem
+openvpn_server_ta: /etc/openvpn/pki/ta.key
+openvpn_server_certs:
+  - '{{ openvpn_server_ca }}'
+  - '{{ openvpn_server_crt }}'
+  - '{{ openvpn_server_key }}'
+  - '{{ openvpn_server_dh }}'
+  - '{{ openvpn_server_ta }}'
